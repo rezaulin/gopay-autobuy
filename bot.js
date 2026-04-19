@@ -22,7 +22,7 @@ puppeteer.use(StealthPlugin());
 const CONFIG = {
   gopayNumber: '',       // Set via --phone or prompt
   headless: process.env.DISPLAY ? false : 'new', // Auto-detect: use display if available, else headless
-  timeout: 60000,        // 60s timeout per step
+  timeout: 120000,       // 120s timeout per step
   slowMo: 100,           // Slow down actions to look human
 };
 
@@ -64,9 +64,24 @@ async function launchBrowser() {
 
 async function openCheckout(page, checkoutUrl) {
   log(`Opening checkout: ${checkoutUrl.substring(0, 60)}...`);
-  await page.goto(checkoutUrl, { waitUntil: 'networkidle2', timeout: CONFIG.timeout });
-  await sleep(2000);
-  log('Checkout page loaded.');
+  // Try with domcontentloaded first (faster), fallback to load
+  try {
+    await page.goto(checkoutUrl, { waitUntil: 'domcontentloaded', timeout: 90000 });
+    await sleep(3000);
+    // Wait for the GoPay radio to appear (actual page ready indicator)
+    await page.waitForSelector('#payment-method-accordion-item-title-gopay', { timeout: 30000 });
+    log('Checkout page loaded.');
+  } catch(e) {
+    log(`First load attempt: ${e.message.substring(0, 80)}`);
+    // Retry with longer timeout
+    try {
+      await page.goto(checkoutUrl, { waitUntil: 'load', timeout: 120000 });
+      await sleep(5000);
+      log('Checkout page loaded (retry).');
+    } catch(e2) {
+      log(`Load retry failed: ${e2.message.substring(0, 80)}`);
+    }
+  }
 }
 
 async function selectGoPay(page) {
