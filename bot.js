@@ -836,10 +836,11 @@ async function main() {
   // Get checkout links
   let checkoutLinks = [];
   if (CONFIG.directUrls && CONFIG.directUrls.length > 0) {
-    checkoutLinks = CONFIG.directUrls;
+    checkoutLinks = CONFIG.directUrls.map(u => u.replace(/^['"]|['"]$/g, ''));
     log(`Using ${checkoutLinks.length} URL(s) from --urls argument`);
   } else if (CONFIG.directUrl) {
-    checkoutLinks = [CONFIG.directUrl];
+    // Strip surrounding quotes (Windows CMD doesn't strip single quotes)
+    checkoutLinks = [CONFIG.directUrl.replace(/^['"]|['"]$/g, '')];
     log('Using URL from --url argument');
   } else {
     const linksInput = await ask('🔗 Enter checkout link(s) (comma-separated for multiple): ');
